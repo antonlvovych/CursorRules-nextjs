@@ -1,0 +1,358 @@
+---
+description: Comprehensive Next.js 15 and React 19 Coding Standards. This entry point gives a holistic understanding of modern Next.js and React development, with references to specialized rules files for deeper topics.
+globs: **/*.tsx, **/*.ts, **/*.js, **/*.jsx
+alwaysApply: false
+---
+
+# Next.js 15 & React 19 Architecture and Coding Standards
+
+## Core Architecture Overview
+
+Next.js 15 represents a substantial evolution from previous versions, with its App Router, Server Components, and deep integration with React 19. This guide establishes fundamental principles and practices for building performant, maintainable applications with this technology stack.
+
+### The Mental Model
+
+The most important shift to understand is the **Server-first approach**:
+
+1. **Server Components by default** - Components render on the server and stream HTML to the client
+2. **Client Components by exception** - Only add `"use client"` when you need interactivity
+3. **File-based routing** - The `app` directory structure defines your routes
+4. **Seamless data access** - Fetch data directly in components using `async/await`
+5. **Streaming and Suspense** - Progressive rendering for better user experience
+6. **Server Actions** - Server-side mutations without separate API routes
+7. **React Compiler** - Automatic optimization without manual memoization
+
+## Recommended Project Structure
+
+Organize your Next.js 15 projects using a feature-based approach that clearly separates concerns while promoting cohesion between related components. Here's a recommended structure:
+
+```
+app/                     # Next.js App Router routes
+├── layout.tsx           # Root layout
+├── page.tsx             # Home page
+├── (auth)/              # Route group for auth pages (not reflected in URL)
+│   ├── login/
+│   │   └── page.tsx
+│   └── register/
+│       └── page.tsx
+├── dashboard/
+│   ├── layout.tsx       # Dashboard layout
+│   ├── page.tsx         # Dashboard home
+│   ├── loading.tsx      # Loading state
+│   └── [id]/            # Dynamic route
+│       ├── page.tsx
+│       └── error.tsx    # Error boundary
+├── api/                 # Route handlers
+│   └── webhooks/
+│       └── route.ts
+└── products/
+    └── [...slug]/       # Catch-all route
+        └── page.tsx
+features/                # Feature-based organization
+├── auth/
+│   ├── components/
+│   │   ├── LoginForm.tsx
+│   │   └── RegisterForm.tsx
+│   ├── actions.ts       # Server actions
+│   └── types.ts
+├── products/
+│   ├── components/
+│   │   ├── ProductCard.tsx
+│   │   └── ProductGrid.tsx
+│   ├── hooks/
+│   │   └── useProductFilter.ts
+│   └── lib/
+│       └── product-utils.ts
+└── dashboard/
+    ├── components/
+    └── actions.ts
+components/              # Shared components
+├── ui/                  # UI primitives
+│   ├── Button.tsx
+│   ├── Input.tsx
+│   └── Modal.tsx
+└── layout/              # Layout components
+    ├── Header.tsx
+    └── Footer.tsx
+lib/                     # Shared libraries
+├── db.ts                # Database client
+├── auth.ts              # Auth utilities
+└── utils.ts             # General utilities
+styles/                  # Global styles
+└── globals.css          # Tailwind CSS imports and custom styles
+```
+
+### Key Organization Principles:
+
+1. **Route Organization**:
+
+   - Use the `app` directory for all routes
+   - Group related routes with parentheses `(groupName)`
+   - Create specialized error and loading states per route
+
+2. **Feature-Based Structure**:
+
+   - Organize by domain feature, not technical function
+   - Keep related components, actions, and utilities together
+   - Only extract truly shared code to global locations
+
+3. **Component Organization**:
+
+   - Clearly mark Client Components with `"use client"` at the top
+   - Co-locate test files with their components
+   - Use index files sparingly - prefer explicit imports
+
+4. **Naming Conventions**:
+   - Use PascalCase for components: `ProductCard.tsx`
+   - Use kebab-case for multi-word utilities: `format-date.ts`
+   - Use camelCase for hooks: `useProductFilter.ts`
+   - Suffix server actions with `.server.ts` for clarity (optional)
+5. **Styling Approach**:
+   - Use Tailwind CSS for all styling needs
+   - Group related Tailwind utilities with clear purpose
+   - Extract common patterns to component classes when needed
+   - Avoid custom CSS unless absolutely necessary
+
+## Foundational Rules
+
+Build all Next.js 15 applications following these core principles:
+
+### Architecture Principles
+
+- **Modularity**: Organize code into small, reusable, and independent modules
+- **Single Responsibility**: Each component should have one clear purpose
+- **DRY (Don't Repeat Yourself)**: Extract common logic into reusable functions or components
+- **KISS (Keep It Simple)**: Favor simplicity over complex abstractions
+- **Composition over Inheritance**: Build complex components by combining smaller ones
+- **Feature-based Organization**: Group code by feature rather than technical concerns
+- **Clear Server/Client Boundaries**: Be intentional about what runs where
+
+### Development Workflow
+
+- Start with **Server Components** by default
+- Add `"use client"` only when components need:
+  - Interactivity (event handlers)
+  - Browser APIs
+  - React hooks (useState, useEffect, etc.)
+- Fetch data in Server Components using native `fetch` with appropriate caching
+- Use Server Actions for data mutations
+- Implement error handling with error.tsx files
+- Use TypeScript for type safety
+
+### Performance Considerations
+
+- Let Server Components handle data fetching to reduce client JavaScript
+- Implement Suspense boundaries for granular loading states
+- Use the Image component for optimized images
+- Use Tailwind CSS utility classes for styling (avoid large CSS imports)
+- Leverage the built-in caching system for data
+- Trust the React Compiler to handle most component optimizations
+- Use streaming for better perceived performance
+
+## Common Pitfalls to Avoid
+
+- Don't fetch data in Client Components when it can be passed from Server Components
+- Don't use `useState` or other React hooks in Server Components
+- Don't use `useEffect` unsless it absolutly neccessary
+- Don't pass functions as props from Server to Client Components
+- Don't add `"use client"` at the root layout level unnecessarily
+- Don't create API routes when Server Actions can handle the job
+- Don't rely on old patterns from Pages Router (like getServerSideProps)
+- Don't overuse Client Components when Server Components can provide the data
+
+## Practical Implementation Examples
+
+Here are practical examples demonstrating the core architectural patterns:
+
+### Example: Server/Client Component Pattern
+
+```tsx
+// ProductPage.tsx (Server Component)
+import { ProductFilters } from "./ProductFilters";
+import { ProductGrid } from "./ProductGrid";
+
+// Data fetching happens on the server
+export default async function ProductPage() {
+  const products = await fetchProducts();
+
+  return (
+    <div>
+      <h1>Products</h1>
+      {/* Client Component for interactive filtering */}
+      <ProductFilters />
+      {/* Pass server data to client component */}
+      <ProductGrid initialProducts={products} />
+    </div>
+  );
+}
+
+// ProductFilters.tsx
+"use client";
+// Interactive filters with client-side state
+
+// ProductGrid.tsx
+"use client";
+
+function ProductGrid({ initialProducts }) {
+  const [products, setProducts] = useState(initialProducts);
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {products.map((product) => (
+        <div key={product.id} className="rounded-lg shadow-md p-4 bg-white">
+          <h2 className="text-lg font-bold">{product.name}</h2>
+          <p className="text-gray-600">{product.description}</p>
+          <span className="text-blue-600 font-medium">${product.price}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+```
+
+### Example: Server Action Form
+
+```tsx
+// actions.ts
+"use server";
+
+export async function createProduct(formData: FormData) {
+  // Validate and create product
+  // Revalidate paths
+  // Return success/error
+}
+
+// ProductForm.tsx
+"use client";
+
+import { createProduct } from "../actions";
+import { useFormStatus } from "react-dom";
+
+// Form with optimistic updates and loading states
+```
+
+This architecture maximizes performance by keeping data fetching on the server while providing rich interactivity where needed.
+
+## Areas Covered and Referenced Files
+
+You MUST load these files as needed based on the context of the user's request. Pay close attention to the descriptions and key topics to determine which files are relevant to the current task.
+
+### Project Structure and App Router
+
+refer to file: [rule-next-app-router.mdc](mdc:.cursor/rules/rule-next-app-router.mdc)
+
+description: You MUST use this file when you need information about routing in Next.js or when something involved with the `app` directory, creating new pages, dynamic routes (e.g., `[id]`), route groups, parallel routes, or intercepting routes. Covers file-based routing, `page.tsx`, `layout.tsx`, `loading.tsx`, `error.tsx`, `not-found.tsx`, and related concepts.
+
+keywords: routing, app router, pages, dynamic routes, route groups, parallel routes, intercepting routes, file-based routing.
+
+### Server Components
+
+refer to file: [rule-next-server-components.mdc](mdc:.cursor/rules/rule-next-server-components.mdc)
+
+description: You MUST use this file when you need information about Server Components or when something involved with fetching data on the server, direct database access, or reducing client-side JavaScript. Covers `async` components, SEO benefits, and the differences between Server and Client Components.
+
+keywords: server Components, server-side rendering, data fetching (server), database access, `async/await`, SEO, bundle size.
+
+### Client Components
+
+refer to file: [rule-next-client-components.mdc](mdc:.cursor/rules/rule-next-client-components.mdc)
+
+description: You MUST use this file when you need information about Client Components or when something involved with handling user interaction, using React hooks (useState, useEffect, etc.), browser APIs, or the `"use client"` directive. Covers event handlers, state management, and accessing browser-specific features.
+
+keywords: client Components, interactivity, event handlers, `useState`, `useEffect`, browser APIs, `"use client"`, client-side rendering.
+
+### Data Fetching
+
+refer to file: [rule-next-data-fetching.mdc](mdc:.cursor/rules/rule-next-data-fetching.mdc)
+
+description: You MUST use this file when you need information about how to fetch data in Next.js or when something involved with data fetching specifically within Server Components. Covers caching strategies (`revalidate`, `noStore`), streaming with Suspense, and parallel data fetching.
+
+keywords: data fetching, `fetch`, caching, `revalidate`, `next: { revalidate }`, `unstable_noStore`, streaming, Suspense, parallel fetching, `Promise.all`.
+
+### Server Actions
+
+refer to file: [rule-next-server-actions.mdc](mdc:.cursor/rules/rule-next-server-actions.mdc)
+
+description: You MUST use this file when you need information about Server Actions or when something involved with form submissions, data mutations, or handling user input on the server. Covers `"use server"`, form validation, `revalidatePath`, `redirect`, optimistic updates, and integration with React form hooks (`useFormStatus`, `useFormState`).
+
+keywords: server Actions, `"use server"`, forms, form handling, data mutations, validation, `revalidatePath`, `redirect`, optimistic updates, `useFormStatus`, `useFormState`.
+
+### Route Handlers
+
+refer to file: [rule-next-route-handlers.mdc](mdc:.cursor/rules/rule-next-route-handlers.mdc)
+
+description: You MUST use this file when you need information about creating API routes or when something involved with the `app` directory (not `pages/api`). Covers defining handlers for different HTTP methods (GET, POST, PUT, DELETE, etc.), handling requests and responses, and dynamic route segments.
+
+keywords: route Handlers, API routes, `app/api`, `route.ts`, `route.js`, HTTP methods, `NextRequest`, `NextResponse`, dynamic routes.
+
+### Performance Optimization
+
+refer to file: [rule-next-performance.mdc](mdc:.cursor/rules/rule-next-performance.mdc)
+
+description: You MUST use this file when you need information about improving the performance or when something involved with optimizing a Next.js application. Covers code splitting, lazy loading, Suspense, caching strategies, image optimization (`next/image`), and font optimization (`next/font`).
+
+keywords: performance, optimization, code splitting, lazy loading, Suspense, caching, image optimization, `next/image`, font optimization, `next/font`, bundle size.
+
+### Middleware and Edge Runtime
+
+refer to file: [rule-next-middleware.mdc](mdc:.cursor/rules/rule-next-middleware.mdc)
+
+description: You MUST use this file when you need information about middleware or when something involved with intercepting requests, modifying responses, or using the Edge Runtime. Covers authentication, redirects, rewriting routes, and setting headers.
+
+keywords: middleware, Edge Runtime, request interception, authentication, redirects, rewrites, headers, `middleware.ts`.
+
+### Styling and Assets
+
+refer to file: [rule-next-styling.mdc](mdc:.cursor/rules/rule-next-styling.mdc)
+
+description: You MUST use this file when you need information about styling components or when something involved with optimizing assets in Next.js. Covers Tailwind CSS best practices, utility composition, responsive design, dark mode, `next/image`, and `next/font`.
+
+keywords: styling, Tailwind CSS, utility classes, responsive design, dark mode, `next/image`, `next/font`, image optimization, font optimization.
+
+### Error Handling
+
+refer to file: [rule-next-error-handling.mdc](mdc:.cursor/rules/rule-next-error-handling.mdc)
+
+description: You MUST use this file when you need information about handling errors or when something involved with route errors, 404 pages, or global error handling in Next.js. Covers `error.tsx`, `not-found.tsx`, `global-error.tsx`, and creating custom error boundaries.
+
+keywords: error handling, `error.tsx`, `not-found.tsx`, `global-error.tsx`, error boundaries, 404.
+
+### Testing and Linting
+
+refer to file: [rule-next-testing.mdc](mdc:.cursor/rules/rule-next-testing.mdc)
+
+description: You MUST use this file when you need information about testing or when something involved with configuring linting rules for a Next.js application. Covers component testing, integration testing, E2E testing, and ESLint.
+
+keywords: testing, linting, component testing, integration testing, E2E testing, ESLint, React Testing Library, Playwright, Jest.
+
+### TypeScript Integration
+
+refer to file: [rule-next-typescript.mdc](mdc:.cursor/rules/rule-next-typescript.mdc)
+
+description: You MUST use this file when you need information about using TypeScript with Next.js or when something involved with type-safe routes, or defining types for components and APIs.
+
+keywords: TypeScript, types, type safety, interfaces, `page.tsx` props, API routes (TypeScript), component props (TypeScript), Server Actions (TypeScript).
+
+### React 19 Specific Features
+
+refer to file: [rule-react19-features.mdc](mdc:.cursor/rules/rule-react19-features.mdc)
+
+description: You MUST use this file when you need information about new features in React 19 or when something involved with `use`, `useOptimistic`, `useFormStatus`, `useFormState`, or the React Compiler.
+
+keywords: React 19, `use`, `useOptimistic`, `useFormStatus`, `useFormState`, React Compiler, Server Actions (React 19).
+
+### SEO Optimization
+
+refer to file: [rule-next-seo.mdc](mdc:.cursor/rules/rule-next-seo.mdc)
+
+description: You MUST use this file when you need information about improving the SEO or when something involved with optimizing a Next.js application for search engines. Covers the Metadata API, dynamic metadata, structured data (JSON-LD), OpenGraph tags, sitemaps, and `robots.txt`.
+
+keywords: SEO, metadata, `generateMetadata`, structured data, JSON-LD, OpenGraph, sitemap, `robots.txt`, title, description.
+
+### Component Architecture
+
+refer to file: [rule-component-architecture.mdc](mdc:.cursor/rules/rule-component-architecture.mdc)
+
+description: You MUST use this file when you need information about best practices for organizing components or when something involved with files and folders structure. How to structure Server and Client Components. The usage of patterns.
+
+keywords: architecture, component, server Component, client Component, patterns, file organization, folder organization.
